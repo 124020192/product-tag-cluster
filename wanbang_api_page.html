@@ -1,0 +1,1530 @@
+
+<html lang="zh-cn">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>万邦淘宝/天猫readme API 返回值说明</title>
+
+	<!--<link rel="stylesheet" href="/skins/css/bootstrap.min.css">-->
+	
+
+	<link rel="stylesheet" href="https://open.onebound.cn/skins/css/bootstrap.css">
+	<script src="https://open.onebound.cn/test/skin/jquery-1.10.2.min.js"></script> 
+	<!-- 高亮显示代码插件 -->
+	<script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js?autoload=true&amp;skin=sunburst&amp;lang=css" defer></script>
+
+
+	<script src="//open.onebound.cn/help/status/vue/include/bootstrap.min.js"></script>
+	<style>p {
+    margin: 0 0 10px;
+}
+p {
+    padding: 15px;
+}
+.version {
+padding-left: 50px; /* 设置左侧间距 /
+padding-right: 50px; / 设置右侧间距 */
+color: red;
+}
+</style>
+	<style id="pre-auth-guard">html{visibility:hidden !important;opacity:0 !important;}</style>
+<script>
+  (function(w, d) {
+    var root = d.documentElement;
+    var authDebugBypass = false;
+    var host = (w.location.hostname || '').toLowerCase();
+    var authBase = (function(currentHost) {
+      if (currentHost === 'open.fan-b.com') {
+        return 'https://c.fan-b.com';
+      }
+      return 'https://console.open.onebound.cn';
+    })(host);
+    var loginPath = authBase + '/console/';
+    var panelPath = authBase + '/panel/';
+    var loginStatusPath = authBase + '/console/index.php';
+    var panelStatusPath = authBase + '/panel/index.php';
+    var guardStyle = d.getElementById('pre-auth-guard');
+
+    function onReady(callback) {
+      if (d.readyState === 'loading') {
+        d.addEventListener('DOMContentLoaded', callback, { once: true });
+        return;
+      }
+      callback();
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[ch];
+      });
+    }
+
+    function normalizeAuthUrl(url) {
+      return String(url == null ? '' : url)
+        .replace(/https?:\/\/console\.open\.onebound\.cn\/console\//ig, loginPath)
+        .replace(/https?:\/\/console\.open\.onebound\.cn\/panel\//ig, panelPath)
+        .replace(/https?:\/\/test\.console\.open\.onebound\.cn\/console\//ig, loginPath)
+        .replace(/https?:\/\/test\.console\.open\.onebound\.cn\/panel\//ig, panelPath)
+        .replace(/https?:\/\/c\.fan-b\.com\/console\//ig, loginPath)
+        .replace(/https?:\/\/c\.fan-b\.com\/panel\//ig, panelPath);
+    }
+
+    function syncAuthEntryLinks() {
+      onReady(function() {
+        Array.prototype.forEach.call(d.querySelectorAll('a[href], area[href]'), function(node) {
+          var href = node.getAttribute('href');
+          var normalized = normalizeAuthUrl(href);
+          if (normalized && normalized !== href) {
+            node.setAttribute('href', normalized);
+          }
+        });
+
+        Array.prototype.forEach.call(d.querySelectorAll('[onclick]'), function(node) {
+          var onclickValue = node.getAttribute('onclick');
+          var normalized = normalizeAuthUrl(onclickValue);
+          if (normalized && normalized !== onclickValue) {
+            node.setAttribute('onclick', normalized);
+          }
+        });
+      });
+    }
+
+    function buildWatermarkLabel(userInfo, source) {
+      var rawValue = '';
+
+      if (userInfo) {
+        rawValue = userInfo.watermark_label || '';
+        if (!rawValue && source !== 'console') {
+          rawValue = userInfo.username || userInfo.mobile || userInfo.email || '';
+        }
+      }
+
+      rawValue = String(rawValue == null ? '' : rawValue).trim();
+      if (!rawValue) {
+        return '';
+      }
+
+      if (userInfo && userInfo.watermark_label) {
+        return rawValue;
+      }
+
+      if (/^\d{11,}$/.test(rawValue)) {
+        try {
+          return 'ID-' + BigInt(rawValue).toString(36).toUpperCase();
+        } catch (error) {
+        }
+      }
+
+      if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rawValue)) {
+        return rawValue.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12).toUpperCase();
+      }
+
+      if (rawValue.length > 18) {
+        return rawValue.slice(0, 18);
+      }
+
+      return rawValue;
+    }
+
+    function renderUserWatermark(watermarkLabel) {
+      if (!watermarkLabel) {
+        return;
+      }
+
+      onReady(function() {
+        var styleId = 'user-login-watermark-style';
+        var layerId = 'user-login-watermark-bg';
+        var existingStyle = d.getElementById(styleId);
+        var existingLayer = d.getElementById(layerId);
+        var viewportWidth = w.innerWidth || d.documentElement.clientWidth || 1440;
+        var viewportHeight = w.innerHeight || d.documentElement.clientHeight || 900;
+        var repeatCount = Math.max(32, Math.ceil((viewportWidth * 3.4) / Math.max(watermarkLabel.length * 11, 56)) + 16);
+        var rowCount = Math.max(22, Math.ceil((viewportHeight * 3) / 42) + 12);
+        var repeatedText = new Array(repeatCount).fill(watermarkLabel).join('     ');
+        var rows = [];
+        var i = 0;
+
+        if (!existingStyle) {
+          existingStyle = d.createElement('style');
+          existingStyle.id = styleId;
+            existingStyle.textContent = ''
+              + 'body.user-watermark-ready{position:relative;isolation:isolate;}'
+              + '#user-login-watermark-bg{position:fixed;left:-45vw;top:-45vh;width:230vw;height:230vh;pointer-events:none;overflow:hidden;z-index:0;display:flex;flex-direction:column;justify-content:space-evenly;transform:rotate(-24deg);transform-origin:center center;}'
+            + '#user-login-watermark-bg .wm-row{display:block;white-space:nowrap;font-size:13px;line-height:1.75;color:rgb(0 123 255 / 4%);letter-spacing:1px;user-select:none;-webkit-user-select:none;}'
+            + '#user-login-watermark-bg .wm-row.is-offset{transform:translateX(56px);}';
+          d.head.appendChild(existingStyle);
+        }
+
+        if (!existingLayer) {
+          existingLayer = d.createElement('div');
+          existingLayer.id = layerId;
+        }
+
+        for (i = 0; i < rowCount; i++) {
+          rows.push('<div class="wm-row' + (i % 2 ? ' is-offset' : '') + '">' + escapeHtml(repeatedText) + '</div>');
+        }
+
+        existingLayer.innerHTML = rows.join('');
+
+        if (!existingLayer.parentNode) {
+          d.body.insertBefore(existingLayer, d.body.firstChild);
+        }
+
+        d.body.classList.add('user-watermark-ready');
+      });
+    }
+
+    function getProfilePath(source) {
+      return (source === 'panel' ? panelPath : loginPath) + '?go=user&do=modify_info';
+    }
+
+    function applyLoggedInUi(userInfo, source) {
+      if (!userInfo) {
+        return;
+      }
+
+      onReady(function() {
+        var loginItem = d.querySelector('.login');
+        var headerStatus = d.querySelector('.header-status');
+        var username = escapeHtml(userInfo.username || userInfo.mobile || userInfo.email || '已登录');
+
+        if (loginItem) {
+          loginItem.style.display = 'none';
+        }
+
+        if (headerStatus) {
+          headerStatus.innerHTML = '<a class="link-button" href="' + getProfilePath(source) + '" target="_blank">欢迎，' + username + '</a>';
+        }
+      });
+
+      renderUserWatermark(buildWatermarkLabel(userInfo, source));
+    }
+
+    function revealPage() {
+      if (guardStyle && guardStyle.parentNode) {
+        guardStyle.parentNode.removeChild(guardStyle);
+        guardStyle = null;
+      }
+      root.style.visibility = 'visible';
+      root.style.opacity = '1';
+    }
+
+    function buildCleanUrl() {
+      var url = new URL(w.location.href);
+      url.searchParams.delete('sync_token');
+      url.searchParams.delete('sso_checked');
+      url.searchParams.delete('panel_sync_token');
+      url.searchParams.delete('panel_auth_checked');
+      return url.toString();
+    }
+
+    function replaceUrlSilently(url) {
+      if (w.history && typeof w.history.replaceState === 'function') {
+        w.history.replaceState(null, d.title, url);
+      }
+    }
+
+    function buildPanelProbeUrl() {
+      var url = new URL(buildCleanUrl());
+      url.searchParams.set('panel_auth_checked', '1');
+      return url.toString();
+    }
+
+    function redirectToConsole() {
+      root.setAttribute('data-auth-message', '请登录后查看，正在跳转登录...');
+      w.location.replace(loginPath + '?go=front&do=login&from_open_portal=1&redirect=' + encodeURIComponent(buildCleanUrl()));
+    }
+
+    function requestStatus(statusPath, syncToken, callback) {
+      var xhr = new XMLHttpRequest();
+      var url = statusPath + '?go=front&do=online_status&mask_customer_id=1';
+
+      if (syncToken) {
+        url += '&sync_token=' + encodeURIComponent(syncToken);
+      }
+
+      xhr.open('GET', url, true);
+      xhr.withCredentials = true;
+      xhr.timeout = 10000;
+      xhr.onreadystatechange = function() {
+        var data = null;
+
+        if (xhr.readyState !== 4) {
+          return;
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            data = JSON.parse(xhr.responseText);
+          } catch (error) {
+          }
+          callback(true, data);
+          return;
+        }
+
+        callback(false, null);
+      };
+      xhr.onerror = function() {
+        callback(false, null);
+      };
+      xhr.ontimeout = function() {
+        callback(false, null);
+      };
+      xhr.send(null);
+    }
+
+    syncAuthEntryLinks();
+
+    (function() {
+      var query = new URLSearchParams(w.location.search);
+      var syncToken = query.get('sync_token');
+      var hasSyncToken = !!syncToken;
+      var panelSyncToken = query.get('panel_sync_token');
+      var panelAuthChecked = query.get('panel_auth_checked') === '1';
+
+      if (authDebugBypass) {
+        revealPage();
+        return;
+      }
+
+      requestStatus(loginStatusPath, syncToken, function(ok, data) {
+        var loggedIn = !!(ok && data && Number(data.status) === 1);
+
+        if (loggedIn && hasSyncToken) {
+          w.location.replace(buildCleanUrl());
+          return;
+        }
+
+        if (loggedIn) {
+          applyLoggedInUi(data && data.data ? data.data : null, 'console');
+          revealPage();
+          return;
+        }
+
+        requestStatus(panelStatusPath, panelSyncToken, function(panelOk, panelData) {
+          var panelLoggedIn = !!(panelOk && panelData && Number(panelData.status) === 1);
+
+          if (panelLoggedIn) {
+            applyLoggedInUi(panelData && panelData.data ? panelData.data : null, 'panel');
+            revealPage();
+            if (panelSyncToken || panelAuthChecked) {
+              replaceUrlSilently(buildCleanUrl());
+            }
+            return;
+          }
+
+          if (!panelAuthChecked) {
+            w.location.replace(panelStatusPath + '?go=front&do=online_status&redirect=' + encodeURIComponent(buildPanelProbeUrl()));
+            return;
+          }
+
+          redirectToConsole();
+        });
+      });
+    })();
+  })(window, document);
+</script></head><style>
+  .breadcrumb {
+    margin-bottom: 10px;
+  }
+  .navbar .container{
+    margin:13px auto;
+  }
+  .navbar{
+    background: #1B1217;
+    height:76px;
+    margin-bottom: 10px;
+  }
+  .navbar-default .navbar-nav > li > a{
+    color:#fff;font-size:16px;
+  }
+  .navbar-default .navbar-nav > .active > a, 
+  .navbar-default .navbar-nav > .active > a:hover, 
+  .navbar-default .navbar-nav > .active > a:focus{
+    background: none;
+    color: #EB6100;
+    border-bottom: 3px #eb6100 solid;
+  }
+  .navbar .navbar-right .link-button {
+    color: #fff;
+    font-size: 16px;
+    line-height: 100%;
+    padding: 9px 15px;
+    height: 36px;
+    margin: 7px 2px;
+  }
+  .navbar .navbar-right .link-button {
+    background-color: #477a32;
+  }
+  .navbar .navbar-right .link-button:first-child {
+    background-color: #EB6100;
+    margin-left: 1px;
+  }
+  .updates-banner {
+    background-color: #e3e3e3;
+    color: #1e1e1e;
+    font-size: 1.3rem;
+    position: relative;
+  }
+  .nav-pills>li>a{
+    padding: 5px 5px;
+  }
+  #server option.check{
+    color:green;
+  }
+  textarea.debug{
+    height: 500px;
+  }
+  @media (max-width: 768px) {
+    .nav > li {
+      float:left;
+    }
+    .nav-justified > li {
+      display:
+      float: left;
+      width: 10%;
+    }
+  }
+  .nav-pills li{
+    width: 64px !important;
+    padding: 0 5px;
+    margin-left: 0px!important;
+    float: left;
+    box-sizing: content-box;
+  }
+  .nav-pills{
+    padding:20px 5px;
+  }
+  .api-type-nav {
+    width: 100%;
+    height: 35px;
+    padding: 5px 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    list-style: none;
+    background: #fff;
+  }
+  .api-type-nav-list {
+    position: relative;
+    flex: 1;
+    text-align: center;
+  }
+  .api-type-nav-list::after {
+    content: "";
+    display: inline-block;
+    width: 1px;
+    height: 10px;
+    background: #ccc;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .api-type-nav-list:last-of-type::after {
+    display: none;
+  }
+  .api-type-nav-list a {
+    color: #000;
+  }
+  .api-type-nav-list a:hover, .api-type-nav-list a:focus, .api-type-nav-list a:active {
+    text-decoration: none;
+  }
+  .api-type-box {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    padding: 0 15px;
+    visibility: hidden;
+    opacity: 0;
+    z-index: 999;
+  }
+  #api_type_list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: 0;
+    box-shadow: 0 5px 5px 0 #ccc;
+    background: #fff;
+  }
+  h1, .h1{
+    font-size:32px;
+  }
+  body {
+    min-width: 1200px;
+    overflow: auto;
+    background: #F4F4F4;
+}
+.footer {
+    height: 163px;
+    background: #202020;
+    color:#BBBBBB;
+  
+}
+
+.footer a.icon {
+    display: inline-block;
+    background: none 6px 0 no-repeat transparent;
+    padding: 0 0 0 39px;
+    vertical-align: middle;
+    line-height: 1.2;
+    width: 90px;
+    height: 33px;
+    margin-left: 6px;
+    box-sizing: border-box;
+    color: #666;
+    font-size: 12px;
+}
+.footer a.icon-jbzx {
+    width: 100px;
+    background-image: url(https://console.open.onebound.cn/console/skin/images/jbzx.png);
+}
+.footer a.icon-kxwz {
+    width: 100px;
+    background-image: url(https://console.open.onebound.cn/console/skin/images/kxwz.png);
+}
+
+.footer a.icon-gswj {
+    width: 100px;
+    background-image: url(https://console.open.onebound.cn/console/skin/images/gswj.png);
+}
+
+#left-menu li a{
+  margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#left-menu  li.active a{
+    background: #F4EFEF;
+    font-family: SourceHanSansCN-Bold;
+    color: #EB6100;
+    border-left: 2px solid #EB6100;
+   
+}
+#left-menu  li a .sub-name-text {
+    color: grey;
+    font-size: 12px;
+    display:block;
+}
+#left-menu{
+  width: 20%;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  margin: auto 15px auto 15px;
+  background: #FFFFFF;
+  border: 1px solid #EBEBEB;
+  box-sizing: border-box;
+}
+#left-menu, #right-content {
+  height: calc(100vh - 188px);
+  margin-bottom: 10px !important;
+  overflow-x: hidden;
+}
+#left-menu::-webkit-scrollbar, #right-content::-webkit-scrollbar {
+  width: 3px;
+}
+#left-menu::-webkit-scrollbar-thumb, #right-content::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background-color: #ccc;
+}
+#left-menu .nav {
+  display: flex;
+  flex-direction: column;
+}
+.nav-pills > li > a:hover{
+  background: #ff9e62;
+  color: #fff;
+}
+.nav-pills > li > a{
+	width: 64px;
+  margin: 0;
+  font-size: 13px;
+  color: #000;
+}
+@media (min-width: 768px){
+
+.nav-pills > li > a{
+	width: 64px;
+}
+a
+{
+	color:#F30;
+	text-decoration:none;
+}
+a:hover
+{
+	color:#F60;
+	text-decoration:underline;
+}
+#left-menu + div{
+    width: 74%;
+    margin: 0 15px auto auto;
+    background: #FFFFFF;
+    border: 1px solid #EBEBEB;
+
+  }
+  .table > thead > tr > th, .table > tbody > tr > th, .table > tfoot > tr > th, .table > thead > tr > td, .table > tbody > tr > td, .table > tfoot > tr > td {
+        word-break: break-all;
+  }
+
+
+/*文档树形菜单图标*/
+.open-table .node {
+    display: inline-block;
+    position: relative
+}
+
+.open-table .node .icon {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    position: absolute;
+    z-index: 100;
+    top: 1px;
+    left: -18px
+}
+
+.open-table .node .icon.have-expand {
+    margin-right: 5px;
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAYAAAByDd+UAAAAAXNSR0IArs4c6QAAATZJREFUSA1jZAACbYdQnu8f3mkyMv4X+cfIwAISoxZg+s/w5/9/xjecAkLXrx5Y/YURZNmPT+9s/jH8Z6WWJdjMYWJg/M3BJ3SEBeSz/0z/We2tTRk66koYxEVEsKknW+zlmzcMFU09DAePnmYFh6KyoZMnKBiP71xJdctgrgRZaukezgAKXiZYnFHbZzDLQDTMbJBdTMgS9GAPDQuVjJ0ZQJgcMDR8SI7PYHpGfQgLCarRdA9SnDUDMcken5p7Z/diDZXB40NcLgQ5G+YzfGqweg8oSHcfjlqIKyrIFh/+QYoz4+MLM3KyA8w8JlDDBsQBNXRoBWBmgxtRoEYqyCJQUw4mQU2LQWaCzAYBkF10bwgzv35w7ZeUusmLP99/cAKTLMd/RuqWPuAo+8/4ipNf6ByoqQ8AooJxwqAev40AAAAASUVORK5CYII=) no-repeat 0;
+    background-color: #fff;
+    background-size: 15px;
+    vertical-align: middle;
+    transition: all .4s cubic-bezier(.4,0,.2,1)
+}
+
+.open-table .node .icon.have-expand.expand {
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAYAAAByDd+UAAAAAXNSR0IArs4c6QAAASFJREFUSA1jZAACbYdQnu8f3mkyMv4X+cfIwAISoxZg+s/w5/9/xjecAkLXrx5Y/YURZNmPT+9s/jH8Z6WWJdjMYWJg/M3BJ3SEBeSz/0z/We2tTRk66koYxEVEsKknW+zlmzcMFU09DAePnmYFh6KyoZMnKBiP71xJdctgrgRZaukezgAKXiZYnFHbZzDLQDTMbJBdTMgS9GCPWkj1UB4N0tEgJTkEcNYMSsbOJBuGrOHe2b3IXDib7qkUpw9xuRDuVDIZdPfhqIVkxhRubaNBijtsyJRhAjVsQHpBDR1aAZjZ4EYUqJEKsgjUlINJUNNikJkgs0EAZBfdG8LMrx9c+yWlbvLiz/cfnMAky/GfkYGqKRccZf8ZX3HyC50DNfUBWhRqkPflW3cAAAAASUVORK5CYII=) no-repeat 0;
+    background-color: #fff;
+    background-size: 15px
+}
+.open-table {font-size: 12px}
+.open-table {
+    overflow: visible;
+    border: 1px solid #d4d9e5;
+    border-radius: 2px;
+    display: table;
+    width: 100%
+}
+
+.open-table .header {
+    display: table-header-group
+}
+
+.open-table .header .header-tr {
+    display: table-row;
+    cursor: pointer;
+    background-color: #ebeef0
+}
+
+.open-table .header .header-tr .header-th {
+    display: table-cell;
+    height: 40px;
+    vertical-align: middle;
+    padding: 10px 8px;
+    font-weight: 500;
+    border-bottom: 1px solid #d4d9e5;
+    border-left: 1px solid #d4d9e5
+}
+
+.open-table .header .header-tr .header-th:first-child {
+    border-left: none
+}
+
+.open-table .body {
+    display: table-row-group;
+    transition: all .4s cubic-bezier(.4,0,.2,1)
+}
+
+.open-table .body .body-tr {
+    display: table-row;
+    cursor: pointer;
+    background-color: #fff
+}
+
+.open-table .body .body-tr:hover {
+    background-color: #ecf6fd
+}
+
+.open-table .body .body-tr:last-child .body-td {
+    border-bottom: none
+}
+
+.open-table .body .body-tr.hide,.open-table .body .body-tr:last-child .body-td.__cate:after {
+    display: none
+}
+
+.open-table .body .body-tr.level-1 .node {
+    margin-left: 15px
+}
+
+.open-table .body .body-tr.level-2 .node {
+    margin-left: 30px
+}
+
+.open-table .body .body-tr.level-3 .node {
+    margin-left: 45px
+}
+
+.open-table .body .body-tr.level-4 .node {
+    margin-left: 60px
+}
+
+.open-table .body .body-tr.leaf .node:before {
+    position: absolute;
+    display: inline-block;
+    content: "";
+    height: 1px;
+    width: 5px;
+    background-color: silver;
+    top: 9px;
+    left: -10px
+}
+
+.open-table .body .body-tr.level-2 .__cate:before,.open-table .body .body-tr.level-3 .__cate:before,.open-table .body .body-tr.level-4 .__cate:before {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 27px;
+    height: calc(50% + 1px);
+    width: 6px;
+    border-left: 1px solid silver
+}
+
+.open-table .body .body-tr.level-2 .__cate:after,.open-table .body .body-tr.level-3 .__cate:after,.open-table .body .body-tr.level-4 .__cate:after {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 27px;
+    height: 50%;
+    width: 6px;
+    border-left: 1px solid silver
+}
+
+.open-table .body .body-tr.level-3 .__cate:after,.open-table .body .body-tr.level-3 .__cate:before {
+    left: 42px
+}
+
+.open-table .body .body-tr.level-4 .__cate:after,.open-table .body .body-tr.level-4 .__cate:before {
+    left: 57px
+}
+
+.open-table .body .body-tr.noAfter .__cate:after,.open-table .body .body-tr.noBefore .__cate:before {
+    display: none!important
+}
+
+.open-table .body .body-tr .body-td {
+    display: table-cell;
+    position: relative;
+    height: 40px;
+    vertical-align: middle;
+    padding: 10px 8px;
+    font-weight: 500;
+    border-bottom: 1px solid #d4d9e5;
+    border-left: 1px solid #d4d9e5;
+    word-break: break-all
+}
+
+.open-table .body .body-tr .body-td:first-child {
+    border-left: none
+}
+
+.open-table .body .body-tr .__cate {
+    padding: 0 8px
+}
+
+.open-table .body .body-tr .__cate:first-child {
+    border-bottom: none;
+    word-break: normal
+}
+@media (min-width: 768px){
+
+.nav-pills > li > a{
+	width: 64px;
+}
+a
+{
+	color:#F30;
+	text-decoration:none;
+}
+a:hover 
+{
+	color:#F60;
+	text-decoration:underline;
+}
+#left-menu + div{
+    width: 74%;
+    margin: 0 15px auto auto;
+    background: #FFFFFF;
+    border: 1px solid #EBEBEB;
+    
+  }
+  .table > thead > tr > th, .table > tbody > tr > th, .table > tfoot > tr > th, .table > thead > tr > td, .table > tbody > tr > td, .table > tfoot > tr > td {
+        word-break: break-all;
+  }
+
+
+
+
+</style>
+<script>
+//文档树形菜单展开收缩功能
+$(document).ready(function(){
+  $(document).on("click",".have-expand",function(){
+    var p = $(this).parents(".body-tr");
+    var c = $(this).parents(".body-tr").attr("class").split("level-")[1].split(" ")[0];
+    var e = $(this).hasClass("expand");
+    if(e){
+      $(this).removeClass("expand")
+    }else{
+      $(this).addClass("expand")
+
+    }
+
+     while($(p).next().size()){
+       p=$(p).next();
+       var cc = $(p).attr("class").split("level-")[1].split(" ")[0];
+       if(cc-0<=c-0)break;
+       if(cc-0>c-0+1 && !e)continue;
+       e?$(p).addClass("hidden").find(".icon").removeClass("expand"): $(p).removeClass("hidden");      
+     }    
+    })
+  });
+</script>
+<style>
+.navbar-header {
+  float: left;
+  margin-left: 0;
+  margin-right: 0;
+}
+.navbar-collapse {
+  margin-left: 0;
+  margin-right: 0;
+  width: auto;
+  border-top: 0;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+.navbar-nav {
+  float: left;
+  margin: 0;
+}
+.navbar-nav > li {
+  float: left;
+}
+.navbar-right {
+  float: right !important;
+  margin-right: -15px;
+}
+.form-inline .form-group {
+  display: inline-block;
+  margin-bottom: 0;
+  vertical-align: middle;
+}
+.form-inline .form-control {
+  display: inline-block;
+  width: auto;
+  vertical-align: middle;
+}
+.container {
+  width: 90%;
+}
+</style><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+ <link rel="stylesheet" media="all and (orientation:portrait)" href="./landscape.css">
+ <nav class="navbar navbar-default">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="//open.onebound.cn/" style="height:45px;">
+            <img alt="Brand" src="//www.onebound.cn/wp-content/themes/cross-apple/assets/images/logo.png" height="30" style="position:relative;top:50%;transform:translateY(-50%);">
+          </a>
+        </div>
+
+
+
+        <nav id="bs-navbar" class="navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="//open.onebound.cn/" target="_blank">解决方案</a></li>
+             <!--<li><a href="//api.onebound.cn/test/" target="_blank">测试</a></li>-->
+            <li class="active"><a href="https://open.onebound.cn/help/api/" target="_blank">API文档</a></li>
+            <!-- <li><a href="https://open.onebound.cn/help/api/lists.php" target="_blank">API数据</a></li> -->
+            <li><a href="https://www.onebound.cn/daigou/" target="_blank">代购系统</a></li>
+            <!--<li><a href="//www.daigouxt.com/" target="_blank">淘宝代购</a></li>-->
+            <!-- <li><a href="https://www.onebound.cn/daigou/#contactus" target="_blank">联系</a></li>-->
+
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li>
+            <form class="form-inline" style="margin: 7px 8px;" action="./?">
+                    <div class="form-group">
+                      <input placeholder="拍立淘" name="q" class="form-control" style="height:36px;">
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-info btn-default btn-primary" style="height:36px;">Go</button>
+                  </form>
+
+            </form>
+
+            <!-- <li><a class="link-button" href="https://open.onebound.cn/#case" target="_blank">合作案例</a></li>-->
+            <li class="login"><a class="link-button" href="http://console.open.onebound.cn/console/" target="_blank">登录</a></li>
+            <li class="header-status"><a class="link-button" href="http://console.open.onebound.cn/console/?i=.open.help.api" target="_blank">注册开通</a></li>
+          </ul>
+        </nav>
+
+
+      </div>
+    </nav>
+    <div class="container">
+<ol class="breadcrumb">
+  <li><a href="/">首页</a></li>
+  <li><a href="/help/">帮助中心</a></li>
+  <li class="active">API文档</li>
+</ol>
+</div>
+
+    
+<style>
+  h1, .h1, h2, .h2, h3, .h3 {
+    margin-top: 15px;
+    margin-bottom: 10px;
+  }
+  h1 small, .h1 small, h2 small, .h2 small, h3 small, .h3 small, h1 .small, .h1 .small, h2 .small, .h2 .small, h3 .small, .h3 .small {
+    font-size: 70%;
+  }
+  h1.page-header {
+    margin: 20px 0 10px;
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 22px;
+  }
+  h3 {
+    font-size: 20px;
+  }
+  @media screen and (max-width:768px) {
+    .container {
+      width: 100%;
+      margin: 0;
+    }
+  }
+</style>
+
+<div class="container" style="position:relative;margin-bottom:10px;">
+  <ul class="api-type-nav" id="api-type"></ul>
+  <div class="api-type-box">
+    <ul class="nav nav-pills nav-justified" role="tablist" id="api_type_list"></ul>
+  </div>
+</div>
+<script>
+let apiTypeData = {
+  主流电商:[
+    { name: "淘宝", url: "#", type: "taobao" },
+    { name: "1688", url: "#", type: "1688" },
+    { name: "京东", url: "#", type: "jd" },
+    { name: "拼多多", url: "#", type: "pinduoduo" },
+    { name: "微店", url: "#", type: "micro" },
+  ],
+  海外电商:[
+    { name: "虾皮", url: "#", type: "shopee" },
+    { name: "速卖通", url: "#", type: "aliexpress" },
+    { name: "Temu", url: "#", type: "temu" },
+    { name: "淘宝海外", url: "#", type: "tglobal" },
+    { name: "Lazada", url: "#", type: "lazada" },
+    { name: "亚马逊", url: "#", type: "amazon" },
+    { name: "易贝", url: "#", type: "ebay" },
+    { name: "跨国采购", url: "#", type: "kgcg" },
+    { name: "阿里巴巴", url: "#", type: "alibaba" },
+    { name: "walgreens", url: "#", type: "walgreens" },
+    { name: "MIC", url: "#", type: "mic" },
+    { name: "shop", url: "#", type: "shop" },
+    { name: "target", url: "#", type: "target" },
+    { name: "野莓", url: "#", type: "wildberries" },
+    { name: "daraz", url: "#", type: "daraz" },
+    { name: "美客多", url: "#", type: "mercado" },
+    { name: "dmm", url: "#", type: "dmm" },
+    { name: "沃尔玛", url: "#", type: "walmart" },
+    { name: "jumia", url: "#", type: "jumia" },
+    { name: "ozon", url: "#", type: "ozon" },
+    { name: "coupang", url: "#", type: "coupang" },
+    { name: "外贸邦", url: "#", type: "item_52wmb" },
+    { name: "1688global", url: "#", type: "1688global" },
+    { name: "希音", url: "#", type: "shein" },
+  ],
+  酒店旅游: [
+    { name: "携程", url: "#", type: "xiecheng" }, 
+    { name: "大麦网", url: "#", type: "damai" },
+    { name: "agoda", url: "#", type: "agoda" },
+    { name: "游虾", url: "#", type: "youxia" },
+    { name: "花筑", url: "#", type: "huazhu" },
+    { name: "东呈酒店", url: "#", type: "dongcheng" },
+    { name: "心里美", url: "#", type: "xinlimei" },
+    { name: "客路", url: "#", type: "klook" },
+    
+  ],
+  电商数据: [
+    { name: "凡客", url: "#", type: "vancl" },
+    { name: "阿里妈妈", url: "#", type: "alimama" },
+    { name: "聚美优品", url: "#", type: "jumei" },
+    { name: "慧聪网", url: "#", type: "hc360" },
+    { name: "货捕头", url: "#", type: "huobutou" },
+    { name: "开山网", url: "#", type: "k3" },
+    { name: "蘑菇街", url: "#", type: "mogujie" },
+    { name: "搜好货", url: "#", type: "souhaohuo" },
+    { name: "淘宝客", url: "#", type: "taobaoke" },   
+    { name: "网易考拉", url: "#", type: "kaola" },
+    { name: "南网商城", url: "#", type: "csg" },
+    { name: "一号店", url: "#", type: "yhd" },
+    { name: "洋码头", url: "#", type: "ymatou" },
+    { name: "值得买", url: "#", type: "smzdm" },
+    { name: "17网", url: "#", type: "yqzwd" },
+    { name: "衣联网", url: "#", type: "ylw" },
+    { name: "服装网", url: "#", type: "fzw" },
+    { name: "义乌购", url: "#", type: "yiwugo" },
+    { name: "VVIC", url: "#", type: "vvic" },
+    { name: "唯品会", url: "#", type: "vip" },
+    { name: "苏宁", url: "#", type: "suning" },
+    { name: "某物", url: "#", type: "dewu" },
+    { name: "xmz", url: "#", type: "xmz" },
+    { name: "识货", url: "#", type: "shihuo" },
+    { name: "qx", url: "#", type: "qx" },
+    { name: "得力", url: "#", type: "deli" },
+    { name: "科力普", url: "#", type: "colipu" },
+    { name: "vdglobal", url: "#", type: "vdglobal" },
+  ],
+  五金工业: [
+    { name: "京东工业", url: "#", type: "vipmro" },
+    { name: "建材网", url: "#", type: "jiancaiwang" },
+    { name: "化工网", url: "#", type: "huagw" },
+    { name: "电子元件", url: "#", type: "ickey" },
+    { name: "中控网", url: "#", type: "zkw" },
+    { name: "中国供应", url: "#", type: "china" },
+    { name: "中国工控", url: "#", type: "zggk" },
+    { name: "施耐德", url: "#", type: "schneider" },
+    { name: "电天下", url: "#", type: "dp123" },
+    { name: "米思米", url: "#", type: "misumi" },
+  ],
+  新闻资讯: [
+    { name: "界面网", url: "#", type: "jmweb" },
+    { name: "澎湃网", url: "#", type: "pbweb" },
+    { name: "腾讯新闻", url: "#", type: "txxw" },
+    { name: "中华网", url: "#", type: "zhw" },
+    { name: "新京报", url: "#", type: "xjb" },
+  ],
+  社交媒体: [
+    { name: "微信", url: "#", type: "weixin" },
+    { name: "某书", url: "#", type: "smallredbook" },
+    { name: "好看视频", url: "#", type: "hksp" },
+    { name: "短剧平台", url: "#", type: "shortvideo" },
+    { name: "某手", url: "#", type: "ks" },
+    { name: "某站", url: "#", type: "bili" },
+    { name: "tiktok", url: "#", type: "tiktok" },     
+    { name: "油管", url: "#", type: "youtube" },
+  ],
+  二手交易:[
+    { name: "爱回收", url: "#", type: "ahs" },
+    { name: "某鱼", url: "#", type: "goodfish" },
+    { name: "废旧物资", url: "#", type: "wuziw" },
+  ],
+  企业数据: [
+    { name: "顺企网", url: "#", type: "sqw" },
+    { name: "天眼查", url: "#", type: "tyc" },
+    { name: "爱企查", url: "#", type: "aqc" },
+  ],
+  线上书店:[
+    { name: "当当", url: "#", type: "dangdang" },
+    { name: "孔夫子", url: "#", type: "kfz" },
+    { name: "知网书店", url: "#", type: "cnbook" },
+  ],
+  招投标信息: [ 
+    { name: "jxsggzy", url: "#", type: "jxsggzy" },
+    { name: "智标领航", url: "#", type: "zblh" },
+    { name: "采购与招标", url: "#", type: "cgyzb" },
+    { name: "比比网", url: "#", type: "bbw" },
+    { name: "火标网", url: "#", type: "hbw" },
+    { name: "采招网", url: "#", type: "czw" },
+    { name: "中项网", url: "#", type: "zxw" },
+  ],
+  房产数据: [
+    { name: "房天下", url: "#", type: "ftx" },  
+    { name: "安居客", url: "#", type: "anjuke" },  
+    { name: "58同城", url: "#", type: "wbtc" },  
+    { name: "安家GO", url: "#", type: "anjiago" },  
+    { name: "贝壳找房", url: "#", type: "beike" },
+  ],
+  商户数据: [
+    { name: "一呼百应", url: "#", type: "yhby" },
+    { name: "一大把", url: "#", type: "yidaba" },
+    { name: "一比多", url: "#", type: "ebdoor" },
+    { name: "马可波罗", url: "#", type: "mkbl" },
+    { name: "志趣网", url: "#", type: "zqw" },
+    { name: "007商务", url: "#", type: "007swz" },
+    { name: "搜了网", url: "#", type: "sole" },
+    { name: "找商网", url: "#", type: "zhaosw" },
+    { name: "B2B", url: "#", type: "B2B" },
+    { name: "加盟网", url: "#", type: "jmw" },
+    { name: "锦程物流", url: "#", type: "jingcheng" },
+  ],
+  智能AI:[
+    { name: "OpenAI", url: "#", type: "openai" },
+    { name: "Deepseek", url: "#", type: "deepseek" },
+  ],
+  其他:[
+    { name: "open", url: "#", type: "open" },
+    { name: "系统", url: "#", type: "sys" },
+    { name: "多平台", url: "#", type: "t1j" },
+    { name: "翻译", url: "#", type: "translate" },
+    { name: "汽车之家", url: "#", type: "qczj" },
+    { name: "懂车帝", url: "#", type: "seecarking" },
+    { name: "adg翻译", url: "#", type: "adg" },
+  ],
+};
+
+  $(document).ready(function() {
+    let apiType = "taobao";
+    let selectKey;
+    $(`<li class="api-type-nav-list"><a href="#">全部</a></li>`).appendTo("#api-type");
+    for (let key in apiTypeData) {
+      $(`<li class="api-type-nav-list"><a href="#">${key}</a></li>`).appendTo("#api-type");
+    }
+
+    for (let key in apiTypeData) {
+      $.each(apiTypeData[key], function(index, value) {
+        $("#api_type_list").append(`<li ${apiType == value.type ? `class="active"` : `class=""`}><a href="${value.url}" data-type="${value.type}">${value.name}</a></li>`);
+      });
+    }
+
+    $(".api-type-nav-list a").click(function(e) {
+      e.preventDefault();
+      let targetKey = $(this).text();
+      if (targetKey == selectKey && $(".api-type-box").css("opacity") == 1) return;
+      selectKey = targetKey;
+      $(".api-type-box").animate({opacity: 0}, 200, function() {
+        $("#api_type_list").empty();
+        if (targetKey == "全部") {
+          for (let key in apiTypeData) {
+            $.each(apiTypeData[key], function(index, value) {
+              $("#api_type_list").append(`<li ${apiType == value.type ? `class="active"` : `class=""`}><a href="${value.url}" data-type="${value.type}">${value.name}</a></li>`);
+            });
+          }
+        } else {
+          $.each(apiTypeData[targetKey], function(index, value) {
+            $("#api_type_list").append(`<li ${apiType == value.type ? `class="active"` : `class=""`}><a href="${value.url}" data-type="${value.type}">${value.name}</a></li>`);
+          });
+        }
+        $(".api-type-box").css("visibility", "visible");
+        $(".api-type-box").animate({opacity: 1}, 200);
+      });
+    });
+
+    $(document).on("click", function(event) {
+      if (!$(event.target).closest(".api-type-nav-list a").length) {
+          $(".api-type-box").animate({opacity: 0}, 200, function() {
+              $(this).css("visibility", "hidden");
+          });
+      }
+    });
+    $(document).on("click", "#api_type_list li a", function(e) {
+      e.preventDefault();
+      let apiName = $(this).attr("data-type");
+      window.location.href = `/help/api/${apiName}.readme.html`;
+  });
+  });
+</script><div class="container" ><div class="row" style="display: flex;" ><div class="col-md-3" style="flex: 1;margin: 0 10px;" id="left-menu"><div><ul class="nav bs-docs-sidenav"><li><a style="margin:30px auto 10px" href="onebound.taobao.readme.html">taobao.readme<span class="sub-name-text">接入文档</span></a></li><li ><a href="onebound.taobao.item_get.html">item_get<span class="sub-name-text">获得淘宝商品详情</span></a></li><li ><a href="onebound.taobao.item_get_app.html">item_get_app<span class="sub-name-text">获得淘宝app商品详情原数据</span></a></li><li ><a href="onebound.taobao.item_get_app_pro.html">item_get_app_pro<span class="sub-name-text">获得淘宝app商品详情原数据</span></a></li><li ><a href="onebound.taobao.item_get_web.html">item_get_web<span class="sub-name-text">获得淘宝商品详情</span></a></li><li ><a href="onebound.taobao.item_get_his.html">item_get_his<span class="sub-name-text">获得淘宝商品缓存数据</span></a></li><li ><a href="onebound.taobao.item_video.html">item_video<span class="sub-name-text">获得淘宝商品视频</span></a></li><li ><a href="onebound.taobao.item_get_pro.html">item_get_pro<span class="sub-name-text">获得淘宝商品详情高级版</span></a></li><li ><a href="onebound.taobao.item_review.html">item_review<span class="sub-name-text">获得淘宝商品评论</span></a></li><li ><a href="onebound.taobao.item_review_show.html">item_review_show<span class="sub-name-text">获得淘宝买家秀</span></a></li><li ><a href="onebound.taobao.item_get_desc.html">item_get_desc<span class="sub-name-text">获得淘宝商品描述</span></a></li><li ><a href="onebound.taobao.item_sync_add.html">item_sync_add<span class="sub-name-text">商品递交</span></a></li><li ><a href="onebound.taobao.item_sync_get.html">item_sync_get<span class="sub-name-text">商品获取</span></a></li><li ><a href="onebound.taobao.item_get_sales.html">item_get_sales<span class="sub-name-text">获取商品销量详情</span></a></li><li ><a href="onebound.taobao.item_sku.html">item_sku<span class="sub-name-text">获取sku详细信息</span></a></li><li ><a href="onebound.taobao.item_fee.html">item_fee<span class="sub-name-text">获得淘宝商品快递费用</span></a></li><li ><a href="onebound.taobao.item_password.html">item_password<span class="sub-name-text">获得淘口令真实url</span></a></li><li ><a href="onebound.taobao.cat_get.html">cat_get<span class="sub-name-text">获得淘宝分类详情</span></a></li><li ><a href="onebound.taobao.item_cat_get.html">item_cat_get<span class="sub-name-text">获得淘宝商品类目</span></a></li><li ><a href="onebound.taobao.item_list_weight.html">item_list_weight<span class="sub-name-text">批量获取商品信息</span></a></li><li ><a href="onebound.taobao.item_history_price.html">item_history_price<span class="sub-name-text">获取商品历史价格信息</span></a></li><li ><a href="onebound.taobao.seller_info.html">seller_info<span class="sub-name-text">获得淘宝店铺详情</span></a></li><li ><a href="onebound.taobao.item_search.html">item_search<span class="sub-name-text">按关键字搜索淘宝商品</span></a></li><li ><a href="onebound.taobao.item_search_tmall.html">item_search_tmall<span class="sub-name-text">按关键字搜索天猫商品</span></a></li><li ><a href="onebound.taobao.item_search_pro.html">item_search_pro<span class="sub-name-text">高级关键字搜索淘宝商品</span></a></li><li ><a href="onebound.taobao.item_search_img.html">item_search_img<span class="sub-name-text">按图搜索淘宝商品（拍立淘）</span></a></li><li ><a href="onebound.taobao.item_search_shop.html">item_search_shop<span class="sub-name-text">获得店铺的所有商品</span></a></li><li ><a href="onebound.taobao.item_search_shop_pro.html">item_search_shop_pro<span class="sub-name-text">获得店铺的所有商品高级版</span></a></li><li ><a href="onebound.taobao.item_search_seller.html">item_search_seller<span class="sub-name-text">搜索店铺列表</span></a></li><li ><a href="onebound.taobao.item_search_guang.html">item_search_guang<span class="sub-name-text">爱逛街</span></a></li><li ><a href="onebound.taobao.item_search_suggest.html">item_search_suggest<span class="sub-name-text">获得搜索词推荐</span></a></li><li ><a href="onebound.taobao.item_search_jupage.html">item_search_jupage<span class="sub-name-text">天天特价</span></a></li><li ><a href="onebound.taobao.item_search_samestyle.html">item_search_samestyle<span class="sub-name-text">搜索同款的商品</span></a></li><li ><a href="onebound.taobao.item_search_similar.html">item_search_similar<span class="sub-name-text">搜索相似的商品</span></a></li><li ><a href="onebound.taobao.item_search_neighbors.html">item_search_neighbors<span class="sub-name-text">邻家好货</span></a></li><li ><a href="onebound.taobao.item_recommend.html">item_recommend<span class="sub-name-text">获取推荐商品列表</span></a></li><li ><a href="onebound.taobao.item_search_best.html">item_search_best<span class="sub-name-text">天猫畅销榜</span></a></li><li ><a href="onebound.taobao.item_question_answer.html">item_question_answer<span class="sub-name-text">淘宝评论问答列表接口</span></a></li><li ><a href="onebound.taobao.upload_img.html">upload_img<span class="sub-name-text">上传图片到淘宝</span></a></li><li ><a href="onebound.taobao.img2text.html">img2text<span class="sub-name-text">图片识别商品接口</span></a></li><li ><a href="onebound.taobao.brand_cat.html">brand_cat<span class="sub-name-text">获取品牌分类列表</span></a></li><li ><a href="onebound.taobao.brand_cat_top.html">brand_cat_top<span class="sub-name-text">获取分类推荐品牌列表</span></a></li><li ><a href="onebound.taobao.custom.html">custom<span class="sub-name-text">自定义API操作</span></a></li><li ><a href="onebound.taobao.buyer_cart_add.html">buyer_cart_add<span class="sub-name-text">添加到购物车</span></a></li><li ><a href="onebound.taobao.buyer_cart_remove.html">buyer_cart_remove<span class="sub-name-text">删除购物车商品</span></a></li><li ><a href="onebound.taobao.buyer_cart_list.html">buyer_cart_list<span class="sub-name-text">获取购物车的商品列表</span></a></li><li ><a href="onebound.taobao.buyer_order_list.html">buyer_order_list<span class="sub-name-text">获取购买到的商品订单列表</span></a></li><li ><a href="onebound.taobao.buyer_order_detail.html">buyer_order_detail<span class="sub-name-text">获取购买到的商品订单详情</span></a></li><li ><a href="onebound.taobao.buyer_order_express.html">buyer_order_express<span class="sub-name-text">获取购买到的商品订单物流</span></a></li><li ><a href="onebound.taobao.buyer_address_list.html">buyer_address_list<span class="sub-name-text">收货地址列表 </span></a></li><li ><a href="onebound.taobao.buyer_address_add.html">buyer_address_add<span class="sub-name-text">添加收货地址 </span></a></li><li ><a href="onebound.taobao.buyer_info.html">buyer_info<span class="sub-name-text">买家信息 </span></a></li><li ><a href="onebound.taobao.buyer_token.html">buyer_token<span class="sub-name-text">买家token </span></a></li><li ><a href="onebound.taobao.seller_order_list.html">seller_order_list<span class="sub-name-text">获取卖出的商品订单列表</span></a></li><li ><a href="onebound.taobao.seller_cat_props.html">seller_cat_props<span class="sub-name-text">商品分类属性</span></a></li><li ><a href="onebound.taobao.product_add.html">product_add<span class="sub-name-text">卖家店铺添加宝贝</span></a></li></ul></div></div><div class="col-md-9" style="flex:3;" id="right-content"><div><h1 class="page-header" >万邦taobao API 接入说明</h1>
+		
+<ol>
+<li><p>API地址:<br>
+ <a href="https://api-gw.onebound.cn/taobao/">https://api-gw.onebound.cn/taobao/</a></p>
+</li>
+<li><p>调用示例：<br>
+ <a href="https://api-gw.onebound.cn/taobao/item_search/?key=&
+&q=女装&start_price=0&end_price=0&page=1&cat=0&discount_only=&sort=&page_size=&seller_info=&nick=&ppath=&imgid=&filter=&&lang=zh-CN&secret=">https://api-gw.onebound.cn/taobao/item_search/?key=&
+&q=女装&start_price=0&end_price=0&page=1&cat=0&discount_only=&sort=&page_size=&seller_info=&nick=&ppath=&imgid=&filter=&&lang=zh-CN&secret=</a></p>
+</li>
+<li><p>参数说明</p>
+<ul>
+<li>通用参数说明<ul>
+<li>参数不要乱传，否则不管成功失败都会扣费</li>
+<li>url说明 https://api-gw.onebound.cn/平台/API类型/  平台：淘宝，京东等，  API类型:[item_search,item_get,item_search_shop等]</li>
+<li>version:API版本</li>
+<li>key:调用key,测试key:test_api_key</li>
+<li>secret:调用secret,测试secret:(不用填写)</li>
+<li>cache:[yes,no]默认yes，将调用缓存的数据，速度比较快</li>
+<li>result_type:[json,xml,serialize,var_export]返回数据格式，默认为json</li>
+<li>lang:[cn,en,ru] 翻译语言，默认cn简体中文</li>
+<li>secret:密钥</li>
+</ul>
+</li>
+<li><p>API:item_search 参数说明：</p>
+<ul>
+<li>q:搜索关键字</li>
+<li>cat:分类ID</li>
+<li>start_price:开始价格</li>
+<li>end_price:结束价格</li>
+<li>sort:排序[bid,<em>bid,bid2,_bid2,_sale,_credit]<br>
+(bid:总价,bid2:商品价格,sale:销量,credit信用,加</em>前缀为从大到小排序)</li>
+<li>page:页数</li>
+<li>page_size:每页宝贝数量，默认40</li>
+<li>seller_info:是否获取商家信息[yes,no],默认yes </li>
+</ul>
+</li>
+<li><p>API:item_get 参数说明:
+num_iid:宝贝ID</p>
+</li>
+</ul>
+</li>
+<li><p>此API目前支持以下基本接口：</p>
+<ul>
+
+<li>item_get    获得淘宝商品详情</li><li>item_get_pro    获得淘宝商品详情高级版</li><li>item_review    获得淘宝商品评论</li><li>item_fee    获得淘宝商品快递费用</li><li>item_password    获得淘口令真实url</li><li>item_list_updown    批量获得淘宝商品上下架时间</li><li>seller_info    获得淘宝店铺详情</li><li>item_search    按关键字搜索淘宝商品</li><li>item_search_tmall    按关键字搜索天猫商品</li><li>item_search_pro    高级关键字搜索淘宝商品</li><li>item_search_img    按图搜索淘宝商品（拍立淘）</li><li>item_search_shop    获得店铺的所有商品</li><li>item_search_seller    搜索店铺列表</li><li>item_search_guang    爱逛街</li><li>item_search_suggest    获得搜索词推荐</li><li>item_search_jupage    天天特价</li><li>item_search_coupon    优惠券查询</li><li>cat_get    获得淘宝分类详情</li><li>item_cat_get    获得淘宝商品类目</li><li>item_search_samestyle    搜索同款的商品</li><li>item_search_similar    搜索相似的商品</li><li>item_sku    获取sku详细信息</li><li>item_recommend    获取推荐商品列表</li><li>brand_cat    获取品牌分类列表</li><li>brand_cat_top    获取分类推荐品牌列表</li><li>brand_cat_list    得到指定分类的品牌列表</li><li>brand_keyword_list    得到指定关键词的品牌列表</li><li>brand_info    得到品牌相关信息</li><li>brand_product_list    得到指定品牌的产品</li><li>custom    自定义API操作</li><li>buyer_cart_add    添加到购物车</li><li>buyer_cart_remove    删除购物车商品</li><li>buyer_cart_clear    清空购物车</li><li>buyer_cart_list    获取购物车的商品列表</li><li>buyer_cart_order    将购物车商品保存为订单</li><li>buyer_order_list    获取购买到的商品订单列表</li><li>buyer_order_detail    获取购买到的商品订单详情</li><li>buyer_order_express    获取购买到的商品订单物流</li><li>buyer_order_message    获取购买到的订单买家留言</li><li>buyer_address_list    收货地址列表 </li><li>buyer_address_clear    清除收货地址 </li><li>buyer_address_remove    删除收货地址 </li><li>buyer_address_modify    修改收货地址 </li><li>buyer_address_add    添加收货地址 </li><li>buyer_info    买家信息 </li><li>buyer_token    买家token </li><li>seller_order_list    获取卖出的商品订单列表</li><li>seller_order_detail    获取卖出的商品订单详情</li><li>seller_order_close    卖家关闭一笔交易</li><li>seller_order_message    获取或修改卖出去的订单备注</li><li>seller_auction_list    商品可上下架商品列表</li><li>seller_auction    商品上下架</li><li>seller_item_add    商品上传</li><li>upload_img    上传图片到淘宝</li><li>img2text    图片识别商品接口</li><li>tbk_order_query    淘宝客订单查询</li><li>item_list_weight    批量获取商品信息</li><li>item_history_price    获取商品历史价格信息</li><li>item_get_app    获得淘宝app商品详情原数据</li>
+</ul>
+</li>
+</ol>
+<p><em>其他接口及详细说明请参考测试界面参数: <a href="http://open.onebound.cn/test/?api_type=taobao&">http://open.onebound.cn/test/?api_type=taobao&</a></em><br>
+<em>Onebound TAOBAO API SDK调用示例：<a href="https://open.onebound.cn/help/demo/sdk/">点击跳转</a></em><br>
+<em>Onebound TAOBAO API SDK下载地址：<a href="https://open.onebound.cn/help/down/onebound-api-sdk.zip">点击下载</a></em>
+</p>
+<hr></div></div></div><div class="bg-info footerinfo" style="display:none">
+<p class="text-muted">
+<span style="float:right;"></span>
+
+<img src="//www.onebound.cn/wp-content/themes/cross-apple/assets/images/logo.png" width="120">
+Powered by：<a href="//www.onebound.cn">万邦</a>
+www.onebound.cn All Rights Reserved. 
+
+ QQ:583964941</p>
+ <script>
+
+  // 给legend绑定事件，点击显示隐藏下面的表格
+    $('legend').click(function () {
+        let table = $(this).parent().find('.flbody');
+        if (table.length == 0){
+            table = $(this).parent().find('iframe')
+        }
+        table.toggle();
+    });
+
+ </script>
+</div></div>
+
+
+<script>
+var cimi = {
+    //初始执行一次
+    init: function () {
+        cimi.navBar();
+    },
+    navBar: function(){
+        var pos=[],
+            $page = $("body"),
+            $nav = $(".tz-box a");
+        for(var i=0;i<($page.length);i++){
+            pos[i] = $page.eq(i).offset().top;
+        }
+        $nav.click(function () {
+            var index = $(this).index(),
+                scrolltop = 0;
+            scrolltop = pos[index];
+            $("html,body").stop().animate({
+                scrollTop: scrolltop
+            }, 500);
+        });
+        $("#top").click(function () {
+            scrolltop = 0;
+            $("html,body").stop().animate({
+                scrollTop: scrolltop
+            }, 500);
+        });
+        $(window).scroll(function(){
+            var top = $(document).scrollTop();
+            if(top >= 300){
+                $(".sidebar").addClass("on");
+            }else{
+                $(".sidebar").removeClass("on");
+            }
+            for(var i=0;i<pos.length;i++){
+              if(top > (pos[i] - 10)){
+                  $nav.eq(i).addClass("on").siblings().removeClass("on");
+              }
+            }
+        }).trigger("scroll");
+    },
+};
+//cimi.init();
+</script>
+
+<style>
+  .copy-code {
+    position: absolute;
+    top: 20px;
+    right: 5%;
+    display: block;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    font-size: 12px;
+    border-radius: 5px;
+    color: #ccc;
+    cursor: pointer;
+    line-height: 1;
+  }
+  #code-Curl .copy-code {
+    top: 10px;
+  }
+</style>
+<script>
+  $(function() {
+    $("#myTabContent .tab-pane, #code-response_demo, #code-error_demo").css("position", "relative");
+    $("#myTabContent .tab-pane .prettyprint, #code-response_demo .prettyprint, #code-error_demo .prettyprint").before(`<span class="copy-code">复制</span>`);
+
+    $(document).on("click", ".copy-code", function() {
+      let copyValue = $(this).siblings(".prettyprint").text();
+      const tempTextarea = document.createElement("textarea");
+      tempTextarea.value = copyValue;
+      document.body.appendChild(tempTextarea);
+      
+      tempTextarea.select();
+      document.execCommand("copy");
+
+      document.body.removeChild(tempTextarea);
+      alert("内容已复制到剪贴板");
+    });
+  });
+</script>
+
+
+<div class="sidebar on">
+    <div class="tz-box">
+		<a  href="#top11">公共参数</a>
+		<a  href="#top12">请求参数</a>
+		<a  href="#top13">响应参数</a>
+		<a  href="#top14">请求示例</a>
+		<a  href="#top15">响应示例</a>
+		<a  href="#top16">异常示例</a>
+		<a  href="#top17">相关资料</a>
+    </div>
+</div>
+
+  <div style="display:none;width: 100%;height: 102px;border: outset;"></div>
+  <style type="text/css">
+    .sidebar {display: none; position: fixed; top:77%; right: 10px; z-index: 100; width:100px; height:416px; margin-top:-208px; overflow: hidden;}
+    .on{ display:block; }
+    .sidebar a{ width:100px; height:30px; line-height:30px; background:#FFFFFF; color: #333333; display:block; font-size:14px;text-decoration: none; padding-left:20px;}
+
+	.sidebar a:hover {
+  background:#F4EFEF;
+}
+    .section-fixed-contact{ position: fixed; z-index: 55; left: 0; right: 0; bottom: 0; height: 100px; background: #fff; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,.1); }
+    .section-fixed-contact .container{ position: relative;width: 90%;}
+    .section-fixed-contact .text{overflow: hidden;white-space: nowrap; float: left; line-height: 54px; padding-top: 23px; font-size: 22px;}
+    .section-fixed-contact .text i{ width: 25px; height: 25px; display: inline-block; background: url() no-repeat center; vertical-align: -6px; margin-right: 10px;}
+    .section-fixed-contact .text .num{ color: #F81528; font-size: 36px; vertical-align: top; margin: 0 10px;}
+    .section-fixed-contact .btns{ float: right; padding-top: 25px;right: 55px;position: absolute;}
+    .section-fixed-contact .btns a{ margin-left: 10px; }
+    .section-fixed-contact .btns .btn-red-shadow{ vertical-align: top; }
+    .section-fixed-contact .btns .btn-red-line{ vertical-align: top; height: 48px; line-height: 48px; width: 158px; margin-left: 10px; }
+    .section-fixed-contact .red-number{ color: #F81528; font-size: 36px; font-style: italic; display: inline-block; vertical-align: -5px; font-weight: 700; margin: 0 3px; }
+    .section-fixed-contact .orange{color: #FF8C00;}
+    .btn-red-shadow {
+        background: url(skins/image/button-red-a.png) no-repeat right top;
+        font-size: 18px;
+        width: 160px;
+        height: 50px;
+        line-height: 50px;
+        border-radius: 5px;
+        display: inline-block;
+        vertical-align: middle;
+        text-align: center;
+        color: #fff;
+    }
+    .btn-red-shadow:hover{
+      background: darkred;
+    }
+    .btn-orange-shadow {
+        background: url(/skins/image/button-red-a.png) no-repeat right top;
+        font-size: 18px;
+        width: 160px;
+        height: 50px;
+        line-height: 50px;
+        border-radius: 5px;
+        box-shadow: 0 10px 10px -2px rgba(252, 131, 13, 0.27);
+        display: inline-block;
+        vertical-align: middle;
+        text-align: center;
+        color: #fff;
+    }
+    .btn-orange-shadow:hover{
+      background: darkred;
+    }
+    .section-fixed-contact .btns a {
+        text-decoration: none;
+    }
+    
+    fieldset>legend {
+      cursor: pointer;
+    }
+
+    @media (min-width: 1200px) {
+      .my-roger-footer {
+        display: none;
+      }
+    }
+    @media (max-width: 1200px) {
+      .section-fixed-contact {
+        display: none;
+      }
+      .my-roger-footer {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        height: auto;
+        padding-bottom: 20px;
+        left: 0;
+      }
+      .my-roger-footer .my-roger-content {
+        width: 100%;
+        line-height: 40%;
+        text-align: center;
+      }
+      .my-roger-content p {
+        font-size: 150%;
+      }
+      .my-roger-footer .my-roger-visit {
+        width: 100%;
+        text-align: center;
+        overflow: hidden;
+      }
+      .my-roger-visit input {
+                background: #ffffff;
+        width: 100%;
+        /* border-radius: 25px; */
+        background: darkred;
+        /* font-size: 150%; */
+        color: white;
+        line-height:40px;
+        text-align: center;
+      }
+      .roger-btn-left {
+        /* float: left; */
+      }
+      .roger-btn-right {
+                font-size: 2rem;
+        /* float: right; */
+      }
+      .my-roger-footer {
+        background: white;
+      }
+    }
+    
+  </style>
+<script type="text/javascript" src="https://www.onebound.cn/daigou/ad_comm.js"></script> 
+  <div class="footer">
+        <div class="container">
+           
+      <div class=" text-center">
+        <p>
+        跨境电商平台接口提供商 数据采集公司 数据接口定制服务 企业级数据服务商<br>
+        备案号：赣ICP备13008243号-1<br>
+        版权所有：新余市万邦科技有限公司 
+
+        </p>
+        <p>
+          <a class="icon icon-kxwz" target="_blank" href="https://t.knet.cn/tsearch/detail?keyword=%E6%96%B0%E4%BD%99%E5%B8%82%E4%B8%87%E9%82%A6%E7%A7%91%E6%8A%80%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8" rel="noopener noreferrer" style="" data-spm-anchor-id="a2107.1.0.0">
+            </a>
+          <a class="icon icon-gswj" href="http://218.65.88.116/wljg/wwdzbssq/dzbssq_login.pt" target="_blank">工商网监电子标识</a>
+            <a class="icon icon-jbzx" href="http://www.12377.cn/" target="_blank">中国互联网举报中心</a>
+
+        </p>
+      </div>
+        </div>
+    </div>
+
+  <div class="section-fixed-contact" style="display:none">
+      <div class="container">
+          <div class="text">
+        <!-- 万邦淘宝API数据接口,外贸代购商品数据调用. -->
+        <span class="orange"><!-- 万邦淘宝API数据接口,外贸代购商品数据调用. --></span><!-- 咨询热线： -->
+        <span class="red-number">　　　万邦淘宝API数据接口,电商代购商品数据调用.</span>　<!-- 海外代购解决方案 -->
+          </div>
+          <div class="btns">
+              <!-- <a style="color: #FFFFFF;" rel="nofollow" href="http://www.onebound.cn/daigou/price2019.php" target="_blank" class="btn-red-shadow">代购系统</a> -->
+              <a id="btn-reg-bottom2" style="color: #FFFFFF;" rel="nofollow" href="https://console.open.onebound.cn/console/?i=.open.help.api.bottom"  class="btn-orange-shadow">立即开通调用</a>
+        
+      </div>
+      <img style="position: absolute;width: 50px;right: 0px;top: 0px;" src="/skins/image/%E7%AE%AD%E5%A4%B4.png">
+      </div>
+  </div>
+  
+  <div class="my-roger-footer" style="display:none">
+    <div id="my-roger-content" class="my-roger-content" style="padding-top: 15px;">
+      <p style="color: #FF8C00;">万邦淘宝API接口,电商API数据调用.</p>
+    </div>
+    
+    <div id="my-roger-visit" class="my-roger-visit">
+      <!-- <input type="button" class="roger-btn-right" onclick='window.open("?#trial")' value="API试用登记申请"> -->
+      
+        <input id="btn-reg-bottom3" type="button" class="roger-btn-right" onclick='window.open("https://console.open.onebound.cn/console/?i=.open.help.api.bottom")' value="API试用登记申请">
+    </div>
+    
+  </div>
+  
+<script type="text/javascript" src="/daigou2024/ad_comm.js">
+<script type="text/javascript">
+
+if(window.location.href.indexOf('#')!=-1){
+var ha=window.location.href.split('#')[1]
+
+$('.nav-secondary li a').each(function(){
+
+    if($(this).attr('href').indexOf(ha)!=-1){
+     $(this).click();
+   }
+})
+}
+
+
+
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?538dca8a2fa1c31d3d6d56e59ed622fb";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+
+ var _hmt = _hmt || [];
+        (function() {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?528a5adfa2035597bba02a22a9fa4b57";
+            var s = document.getElementsByTagName("script")[0];
+            s.parentNode.insertBefore(hm, s);
+        })();
+</script>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq = window._paq || [];
+  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+  _paq.push(["setDocumentTitle", document.domain + "/" + document.title]);
+  _paq.push(["setCookieDomain", "*.onebound.cn"]);
+  _paq.push(["setDomains", ["*.onebound.cn"]]);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="https://tj.onebound.cn/";
+    _paq.push(['setTrackerUrl', u+'matomo.php']);
+    _paq.push(['setSiteId', '1']);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+  })();
+</script>
+<!-- End Matomo Code -->
+

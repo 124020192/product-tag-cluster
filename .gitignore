@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.env
+.venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
+config.json
+output/*.json
+output/*.csv
+web/web_server.log
+*.bat
+*.log
+
+# Keep output directory but not the generated files
+!output/.gitkeep
+
+# API keys & secrets - DO NOT commit
+*.key
+*.secret
+credentials/
